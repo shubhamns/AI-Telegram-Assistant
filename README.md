@@ -2,6 +2,12 @@
 
 A one-day MVP that connects Telegram, OpenAI, MongoDB, and a React dashboard for AI chat, natural-language reminders, and automation logging.
 
+<img width="373" height="622" alt="image" src="https://github.com/user-attachments/assets/dc223f20-ae88-4a8f-b268-8ab1ebeebc2d" />
+<img width="355" height="624" alt="image" src="https://github.com/user-attachments/assets/2de0f4ec-357e-4ede-be55-e55cfa0649cb" />
+<img width="341" height="617" alt="image" src="https://github.com/user-attachments/assets/e7841a21-63a9-4170-9441-53f74a2f2f2c" />
+<img width="304" height="596" alt="image" src="https://github.com/user-attachments/assets/66dcb07d-9b76-4099-a4dc-b6ae23632e78" />
+
+
 ## Features
 
 - Telegram bot connection (polling locally, webhook in production)
