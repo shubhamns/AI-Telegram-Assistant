@@ -11,7 +11,7 @@ export default function DashboardLayout() {
     <div className="min-h-screen flex flex-col md:flex-row">
       <aside className="bg-slate-900 text-white md:w-64 md:min-h-screen">
         <div className="p-4 border-b border-slate-700">
-          <h1 className="text-lg font-semibold">AI Telegram Assistant</h1>
+          <h1 className="text-lg font-semibold">AI-Telegram-Assistant</h1>
           <p className="text-xs text-slate-400 mt-1">Automation Dashboard</p>
         </div>
         <nav className="p-2 flex md:flex-col gap-1 overflow-x-auto">

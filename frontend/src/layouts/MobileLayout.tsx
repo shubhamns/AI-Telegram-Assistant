@@ -25,7 +25,7 @@ export default function MobileLayout() {
       <SafeArea position="top" />
       {!hideChrome && (
         <header className="ig-top-bar">
-          <h1 className="ig-logo">DayMate</h1>
+          <h1 className="ig-logo">AI-Telegram-Assistant</h1>
           <button type="button" className="ig-top-action" onClick={() => navigate("/send")} aria-label="Send message">
             <SendOutline fontSize={22} />
           </button>

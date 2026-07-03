@@ -60,9 +60,9 @@ body {
 }
 .ig-logo {
   font-family: "Segoe UI", system-ui, sans-serif;
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   margin: 0;
   color: var(--ig-text);
 }

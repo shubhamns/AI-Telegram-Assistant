@@ -19,11 +19,11 @@ export async function handleTelegramUpdate(body: unknown): Promise<void> {
     lastName: msg.from?.last_name || msg.chat.last_name,
   });
   if (text === "/start") {
-    await telegramService.sendMessage(chatId, "AI Telegram Assistant connected successfully.");
+    await telegramService.sendMessage(chatId, "AI-Telegram-Assistant connected successfully.");
     await conversationService.saveMessage({
       conversationId: conversation._id,
       role: "assistant",
-      content: "AI Telegram Assistant connected successfully.",
+      content: "AI-Telegram-Assistant connected successfully.",
       source: "telegram",
     });
     return;

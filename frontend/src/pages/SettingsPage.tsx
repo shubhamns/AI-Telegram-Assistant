@@ -61,7 +61,7 @@ export default function SettingsPage() {
         </div>
       </Card>
       <Card title="About">
-        <p className="ig-caption" style={{ textAlign: "left", margin: 0 }}>DayMate – Plan your day, get reminders, and chat with AI via Telegram.</p>
+        <p className="ig-caption" style={{ textAlign: "left", margin: 0 }}>AI-Telegram-Assistant — plan your day, get reminders, and chat with AI via Telegram.</p>
       </Card>
     </FixedPageLayout>
   );

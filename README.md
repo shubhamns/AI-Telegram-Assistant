@@ -1,6 +1,6 @@
-# AI Telegram Automation Assistant
+# AI-Telegram-Assistant
 
-A one-day MVP that connects Telegram, OpenAI, MongoDB, and a React dashboard for AI chat, natural-language reminders, and automation logging.
+A personal AI assistant that connects Telegram, OpenAI, MongoDB, and a React dashboard for chat, natural-language reminders, and automation logging.
 
 <img width="373" height="622" alt="image" src="https://github.com/user-attachments/assets/dc223f20-ae88-4a8f-b268-8ab1ebeebc2d" />
 <img width="355" height="624" alt="image" src="https://github.com/user-attachments/assets/2de0f4ec-357e-4ede-be55-e55cfa0649cb" />
