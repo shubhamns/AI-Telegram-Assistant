@@ -1,0 +1,11 @@
+import { Router } from "express";
+import * as reminderController from "../controllers/reminder.controller.js";
+const router = Router();
+router.get("/", reminderController.listReminders);
+router.post("/", reminderController.createReminder);
+router.post("/clear-completed", reminderController.clearCompleted);
+router.put("/:id", reminderController.updateReminder);
+router.delete("/:id", reminderController.deleteReminder);
+router.patch("/:id/cancel", reminderController.cancelReminder);
+router.patch("/:id/complete", reminderController.completeReminder);
+export default router;

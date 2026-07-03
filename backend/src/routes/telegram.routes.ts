@@ -1,0 +1,10 @@
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import * as telegramController from "../controllers/telegram.controller.js";
+const router = Router();
+const sendLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { success: false, message: "Too many requests" } });
+router.get("/status", telegramController.getStatus);
+router.post("/send", sendLimiter, telegramController.sendMessage);
+router.post("/set-webhook", telegramController.setWebhook);
+router.get("/webhook-info", telegramController.webhookInfo);
+export default router;

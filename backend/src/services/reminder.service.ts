@@ -1,0 +1,147 @@
+import { Types } from "mongoose";
+import { Reminder, type IReminder } from "../models/reminder.model.js";
+import { env } from "../config/env.js";
+import { formatInTimeZone } from "date-fns-tz";
+import * as telegramService from "./telegram.service.js";
+import * as automationService from "./automation.service.js";
+import { logger } from "../utils/logger.js";
+export async function createReminder(data: {
+  title: string;
+  scheduledAt: Date;
+  telegramChatId: string;
+  originalText?: string;
+  notifyMinutesBefore?: number;
+}): Promise<IReminder> {
+  return Reminder.create({
+    title: data.title,
+    scheduledAt: data.scheduledAt,
+    telegramChatId: data.telegramChatId,
+    originalText: data.originalText,
+    notifyMinutesBefore: data.notifyMinutesBefore ?? 0,
+    notifySent: false,
+    timezone: env.APP_TIMEZONE,
+    status: "pending",
+  });
+}
+export async function listReminders(status?: string): Promise<IReminder[]> {
+  const filter = status ? { status } : {};
+  return Reminder.find(filter).sort({ scheduledAt: 1 });
+}
+export async function getReminderById(id: string): Promise<IReminder | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  return Reminder.findById(id);
+}
+export async function updateReminder(id: string, data: {
+  title?: string;
+  scheduledAt?: Date;
+  originalText?: string;
+  notifyMinutesBefore?: number;
+}): Promise<IReminder | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const reminder = await Reminder.findOne({ _id: id, status: "pending" });
+  if (!reminder) return null;
+  if (data.title) reminder.title = data.title;
+  if (data.originalText !== undefined) reminder.originalText = data.originalText;
+  if (data.scheduledAt) {
+    reminder.scheduledAt = data.scheduledAt;
+    reminder.notifySent = false;
+  }
+  if (data.notifyMinutesBefore !== undefined) {
+    reminder.notifyMinutesBefore = data.notifyMinutesBefore;
+    reminder.notifySent = false;
+  }
+  await reminder.save();
+  return reminder;
+}
+export async function deleteReminder(id: string): Promise<boolean> {
+  if (!Types.ObjectId.isValid(id)) return false;
+  const result = await Reminder.deleteOne({ _id: id, status: "pending" });
+  return result.deletedCount > 0;
+}
+export async function cancelReminder(id: string): Promise<IReminder | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  return Reminder.findOneAndUpdate({ _id: id, status: "pending" }, { status: "cancelled" }, { new: true });
+}
+export async function completeReminder(id: string): Promise<IReminder | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  return Reminder.findOneAndUpdate(
+    { _id: id, status: "pending" },
+    { status: "sent", sentAt: new Date() },
+    { new: true }
+  );
+}
+export async function clearCompletedReminders(ids?: string[]): Promise<number> {
+  const filter: { status: string; _id?: { $in: Types.ObjectId[] } } = { status: "sent" };
+  if (ids?.length) {
+    const validIds = ids.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
+    if (validIds.length === 0) return 0;
+    filter._id = { $in: validIds };
+  }
+  const result = await Reminder.deleteMany(filter);
+  return result.deletedCount;
+}
+export function formatReminderConfirmation(title: string, scheduledAt: Date): string {
+  const formatted = formatInTimeZone(scheduledAt, env.APP_TIMEZONE, "h:mm a 'on' MMM d, yyyy");
+  return `Reminder created: ${title} at ${formatted}.`;
+}
+export async function processDueReminders(): Promise<void> {
+  await processEarlyNotifications();
+  let count = 0;
+  while (count < 50 && (await processOneDueReminder())) {
+    count += 1;
+  }
+}
+async function processEarlyNotifications(): Promise<void> {
+  const now = new Date();
+  const reminders = await Reminder.find({
+    status: "pending",
+    notifyMinutesBefore: { $gt: 0 },
+    notifySent: false,
+  }).limit(20);
+  for (const reminder of reminders) {
+    const earlyAt = new Date(reminder.scheduledAt.getTime() - reminder.notifyMinutesBefore * 60000);
+    if (now < earlyAt || now >= reminder.scheduledAt) continue;
+    try {
+      const label = reminder.notifyMinutesBefore === 1 ? "1 minute" : `${reminder.notifyMinutesBefore} minutes`;
+      await telegramService.sendMessage(reminder.telegramChatId, `Upcoming in ${label}: ${reminder.title}`);
+      reminder.notifySent = true;
+      await reminder.save();
+      await automationService.logSuccess("reminder_early", `Early reminder sent: ${reminder.title}`, { reminderId: reminder._id });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "Unknown error";
+      logger.error("Early reminder send failed", reason);
+    }
+  }
+}
+async function processOneDueReminder(): Promise<boolean> {
+  const now = new Date();
+  const reminder = await Reminder.findOneAndUpdate(
+    { status: "pending", scheduledAt: { $lte: now } },
+    { status: "processing" },
+    { sort: { scheduledAt: 1 }, new: true }
+  );
+  if (!reminder) return false;
+  try {
+    await telegramService.sendMessage(reminder.telegramChatId, `Reminder: ${reminder.title} 🏋️`);
+    reminder.status = "sent";
+    reminder.sentAt = new Date();
+    await reminder.save();
+    await automationService.logSuccess("reminder_sent", `Reminder sent: ${reminder.title}`, { reminderId: reminder._id });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "Unknown error";
+    reminder.status = "failed";
+    reminder.failureReason = reason;
+    await reminder.save();
+    await automationService.logFailure("reminder_sent", `Failed to send reminder: ${reminder.title}`, { reminderId: reminder._id, error: reason });
+    logger.error("Reminder send failed", reason);
+  }
+  return true;
+}
+export async function getDashboardReminderStats(): Promise<{ pending: number; sent: number; failed: number }> {
+  const [pending, sent, failed] = await Promise.all([
+    Reminder.countDocuments({ status: "pending" }),
+    Reminder.countDocuments({ status: "sent" }),
+    Reminder.countDocuments({ status: "failed" }),
+  ]);
+  return { pending, sent, failed };
+}
