@@ -8,6 +8,7 @@ export interface Reminder {
   timezone: string;
   status: ReminderStatus;
   notifyMinutesBefore?: number;
+  notifyMessageCount?: number;
   notifySent?: boolean;
   sentAt?: string;
   failureReason?: string;

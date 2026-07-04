@@ -8,6 +8,7 @@ export interface IReminder extends Document {
   timezone: string;
   status: ReminderStatus;
   notifyMinutesBefore: number;
+  notifyMessageCount: number;
   notifySent: boolean;
   sentAt?: Date;
   failureReason?: string;
@@ -23,6 +24,7 @@ const reminderSchema = new Schema<IReminder>(
     timezone: { type: String, required: true },
     status: { type: String, enum: ["pending", "processing", "sent", "failed", "cancelled"], default: "pending", index: true },
     notifyMinutesBefore: { type: Number, default: 0 },
+    notifyMessageCount: { type: Number, default: 1, min: 1, max: 5 },
     notifySent: { type: Boolean, default: false },
     sentAt: { type: Date },
     failureReason: { type: String },

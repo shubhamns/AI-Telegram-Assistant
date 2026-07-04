@@ -19,6 +19,7 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
     telegramChatId: chatId,
     originalText: body.originalText,
     notifyMinutesBefore: body.notifyMinutesBefore,
+    notifyMessageCount: body.notifyMessageCount,
   });
   res.status(201).json({ success: true, data: reminder });
 });
@@ -30,6 +31,7 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : undefined,
     originalText: body.originalText,
     notifyMinutesBefore: body.notifyMinutesBefore,
+    notifyMessageCount: body.notifyMessageCount,
   });
   if (!reminder) throw new AppError("Pending reminder not found", 404);
   res.json({ success: true, data: reminder });

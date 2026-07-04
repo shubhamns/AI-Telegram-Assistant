@@ -10,6 +10,7 @@ export async function createReminder(payload: {
   scheduledAt: string;
   originalText?: string;
   notifyMinutesBefore?: number;
+  notifyMessageCount?: number;
 }): Promise<Reminder> {
   const { data } = await api.post<ApiResponse<Reminder>>("/reminders", payload);
   return data.data;
@@ -19,6 +20,7 @@ export async function updateReminder(id: string, payload: {
   scheduledAt?: string;
   originalText?: string;
   notifyMinutesBefore?: number;
+  notifyMessageCount?: number;
 }): Promise<Reminder> {
   const { data } = await api.put<ApiResponse<Reminder>>(`/reminders/${id}`, payload);
   return data.data;

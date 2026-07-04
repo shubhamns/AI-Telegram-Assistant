@@ -5,7 +5,7 @@ import { updateReminder, deleteReminder } from "@/api/reminderApi";
 import type { Reminder } from "@/types/reminder";
 import IgButton from "@/components/common/IgButton";
 import ReminderFormFields from "@/components/reminders/ReminderFormFields";
-import { notifyToMinutes, minutesToNotify } from "@/utils/notify";
+import { notifyToMinutes, minutesToNotify, msgCountToLabel, labelToMsgCount } from "@/utils/notify";
 import { time12FromDate, scheduledAtIso, type Time12 } from "@/utils/time";
 type Props = {
   reminder: Reminder | null;
@@ -17,16 +17,18 @@ export default function EditReminderSheet({ reminder, onClose }: Props) {
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState<Time12>(["09", "00", "AM"]);
   const [notify, setNotify] = useState("At time");
+  const [msgCount, setMsgCount] = useState("1");
   useEffect(() => {
     if (!reminder) return;
     const when = new Date(reminder.scheduledAt);
     setDate(when);
     setTime(time12FromDate(when));
     setNotify(minutesToNotify(reminder.notifyMinutesBefore ?? 0));
+    setMsgCount(msgCountToLabel(reminder.notifyMessageCount ?? 1));
     form.setFieldsValue({ title: reminder.title, notes: reminder.originalText || "" });
   }, [reminder, form]);
   const save = useMutation({
-    mutationFn: (payload: { title: string; scheduledAt: string; originalText?: string; notifyMinutesBefore: number }) =>
+    mutationFn: (payload: { title: string; scheduledAt: string; originalText?: string; notifyMinutesBefore: number; notifyMessageCount: number }) =>
       updateReminder(reminder!._id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reminders"] });
@@ -50,6 +52,7 @@ export default function EditReminderSheet({ reminder, onClose }: Props) {
       scheduledAt: scheduledAtIso(date, time),
       originalText: values.notes || undefined,
       notifyMinutesBefore: notifyToMinutes(notify),
+      notifyMessageCount: labelToMsgCount(msgCount),
     });
   };
   const onDelete = async () => {
@@ -64,7 +67,7 @@ export default function EditReminderSheet({ reminder, onClose }: Props) {
           <button type="button" className="ig-nav-action" onClick={() => form.submit()}>Save</button>
         </div>
         <Form form={form} layout="vertical" onFinish={onSubmit}>
-          <ReminderFormFields date={date} onDateChange={setDate} time={time} onTimeChange={setTime} notify={notify} onNotifyChange={setNotify} />
+          <ReminderFormFields date={date} onDateChange={setDate} time={time} onTimeChange={setTime} notify={notify} onNotifyChange={setNotify} msgCount={msgCount} onMsgCountChange={setMsgCount} />
         </Form>
         <IgButton variant="danger" block className="ig-btn--sm" loading={remove.isPending} onClick={onDelete} style={{ marginTop: 8 }}>Delete Reminder</IgButton>
       </div>

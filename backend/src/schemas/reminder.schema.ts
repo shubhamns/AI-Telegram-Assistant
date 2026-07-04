@@ -5,12 +5,14 @@ export const createReminderSchema = z.object({
   telegramChatId: z.string().optional(),
   originalText: z.string().optional(),
   notifyMinutesBefore: z.number().int().min(0).max(1440).optional(),
+  notifyMessageCount: z.number().int().min(1).max(5).optional(),
 });
 export const updateReminderSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   scheduledAt: z.string().datetime({ offset: true }).or(z.string().datetime()).optional(),
   originalText: z.string().optional(),
   notifyMinutesBefore: z.number().int().min(0).max(1440).optional(),
+  notifyMessageCount: z.number().int().min(1).max(5).optional(),
 });
 export const reminderQuerySchema = z.object({
   status: z.enum(["pending", "processing", "sent", "failed", "cancelled"]).optional(),

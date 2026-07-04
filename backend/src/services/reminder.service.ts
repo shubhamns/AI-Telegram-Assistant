@@ -5,12 +5,24 @@ import { formatInTimeZone } from "date-fns-tz";
 import * as telegramService from "./telegram.service.js";
 import * as automationService from "./automation.service.js";
 import { logger } from "../utils/logger.js";
+export function reminderBody(title: string, notes?: string): string {
+  const titleText = title.trim();
+  const noteText = notes?.trim();
+  if (!noteText || noteText === titleText) return titleText;
+  return `${titleText}\n\n${noteText}`;
+}
+export function reminderMessageText(title: string, notes?: string, index?: number, total?: number): string {
+  const base = `Reminder: ${reminderBody(title, notes)}`;
+  if (total && total > 1 && index) return `${base} (${index}/${total})`;
+  return base;
+}
 export async function createReminder(data: {
   title: string;
   scheduledAt: Date;
   telegramChatId: string;
   originalText?: string;
   notifyMinutesBefore?: number;
+  notifyMessageCount?: number;
 }): Promise<IReminder> {
   return Reminder.create({
     title: data.title,
@@ -18,6 +30,7 @@ export async function createReminder(data: {
     telegramChatId: data.telegramChatId,
     originalText: data.originalText,
     notifyMinutesBefore: data.notifyMinutesBefore ?? 0,
+    notifyMessageCount: data.notifyMessageCount ?? 1,
     notifySent: false,
     timezone: env.APP_TIMEZONE,
     status: "pending",
@@ -36,6 +49,7 @@ export async function updateReminder(id: string, data: {
   scheduledAt?: Date;
   originalText?: string;
   notifyMinutesBefore?: number;
+  notifyMessageCount?: number;
 }): Promise<IReminder | null> {
   if (!Types.ObjectId.isValid(id)) return null;
   const reminder = await Reminder.findOne({ _id: id, status: "pending" });
@@ -50,6 +64,7 @@ export async function updateReminder(id: string, data: {
     reminder.notifyMinutesBefore = data.notifyMinutesBefore;
     reminder.notifySent = false;
   }
+  if (data.notifyMessageCount !== undefined) reminder.notifyMessageCount = data.notifyMessageCount;
   await reminder.save();
   return reminder;
 }
@@ -103,7 +118,7 @@ async function processEarlyNotifications(): Promise<void> {
     if (now < earlyAt || now >= reminder.scheduledAt) continue;
     try {
       const label = reminder.notifyMinutesBefore === 1 ? "1 minute" : `${reminder.notifyMinutesBefore} minutes`;
-      await telegramService.sendMessage(reminder.telegramChatId, `Upcoming in ${label}: ${reminder.title}`);
+      await telegramService.sendMessage(reminder.telegramChatId, `Upcoming in ${label}: ${reminderBody(reminder.title, reminder.originalText)}`);
       reminder.notifySent = true;
       await reminder.save();
       await automationService.logSuccess("reminder_early", `Early reminder sent: ${reminder.title}`, { reminderId: reminder._id });
@@ -121,8 +136,12 @@ async function processOneDueReminder(): Promise<boolean> {
     { sort: { scheduledAt: 1 }, new: true }
   );
   if (!reminder) return false;
+  const total = Math.min(Math.max(reminder.notifyMessageCount ?? 1, 1), 5);
   try {
-    await telegramService.sendMessage(reminder.telegramChatId, `Reminder: ${reminder.title} 🏋️`);
+    for (let i = 1; i <= total; i += 1) {
+      await telegramService.sendMessage(reminder.telegramChatId, reminderMessageText(reminder.title, reminder.originalText, i, total));
+      if (i < total) await new Promise((r) => setTimeout(r, 100));
+    }
     reminder.status = "sent";
     reminder.sentAt = new Date();
     await reminder.save();

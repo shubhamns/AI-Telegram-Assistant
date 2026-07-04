@@ -5,7 +5,7 @@ import { Form, Toast, NavBar } from "antd-mobile";
 import { createReminder } from "@/api/reminderApi";
 import IgButton from "@/components/common/IgButton";
 import ReminderFormFields from "@/components/reminders/ReminderFormFields";
-import { notifyToMinutes } from "@/utils/notify";
+import { notifyToMinutes, labelToMsgCount } from "@/utils/notify";
 import { defaultTime, scheduledAtIso } from "@/utils/time";
 export default function AddReminderPage() {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function AddReminderPage() {
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(defaultTime);
   const [notify, setNotify] = useState("At time");
+  const [msgCount, setMsgCount] = useState("1");
   const save = useMutation({
     mutationFn: createReminder,
     onSuccess: () => {
@@ -29,6 +30,7 @@ export default function AddReminderPage() {
       scheduledAt: scheduledAtIso(date, time),
       originalText: values.notes || undefined,
       notifyMinutesBefore: notifyToMinutes(notify),
+      notifyMessageCount: labelToMsgCount(msgCount),
     });
   };
   return (
@@ -40,7 +42,7 @@ export default function AddReminderPage() {
       </div>
       <div className="page-stack-body">
         <Form form={form} layout="vertical" onFinish={onSubmit}>
-          <ReminderFormFields date={date} onDateChange={setDate} time={time} onTimeChange={setTime} notify={notify} onNotifyChange={setNotify} />
+          <ReminderFormFields date={date} onDateChange={setDate} time={time} onTimeChange={setTime} notify={notify} onNotifyChange={setNotify} msgCount={msgCount} onMsgCountChange={setMsgCount} />
         </Form>
       </div>
       <div className="page-stack-footer">
