@@ -452,6 +452,21 @@ body {
   color: var(--ig-text-secondary);
   margin: 0;
 }
+.chat-clear-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--ig-border);
+  background: var(--ig-surface);
+  color: #ED4956;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.chat-clear-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .chat-messages {
   flex: 1;
   overflow-y: auto;

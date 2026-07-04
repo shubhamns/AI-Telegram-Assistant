@@ -13,3 +13,7 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
   const { data } = await api.get<ApiResponse<Message[]>>(`/conversations/${conversationId}/messages`);
   return data.data;
 }
+export async function clearChatHistory(conversationId: string): Promise<number> {
+  const { data } = await api.delete<ApiResponse<{ deleted: number }>>(`/conversations/${conversationId}/messages`);
+  return data.data.deleted;
+}

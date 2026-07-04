@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Input, DotLoading } from "antd-mobile";
-import { fetchConversations, fetchMessages } from "@/api/conversationApi";
+import { Input, DotLoading, Dialog, Toast } from "antd-mobile";
+import { fetchConversations, fetchMessages, clearChatHistory } from "@/api/conversationApi";
 import { sendAiChat } from "@/api/aiApi";
 import LoadingState from "@/components/common/LoadingState";
 interface ChatMsg {
@@ -27,6 +27,16 @@ export default function AIPage() {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
     },
   });
+  const clearMutation = useMutation({
+    mutationFn: () => clearChatHistory(convId!),
+    onSuccess: (deleted) => {
+      setLocalMsgs([]);
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      Toast.show({ icon: "success", content: deleted ? `Cleared ${deleted} messages` : "Chat cleared" });
+    },
+    onError: (err: Error) => Toast.show({ icon: "fail", content: err.message }),
+  });
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMsgs, msgQuery.data]);
@@ -41,15 +51,26 @@ export default function AIPage() {
     setInput("");
     chatMutation.mutate(msg);
   };
+  const handleClearHistory = async () => {
+    if (!allMsgs.length) return;
+    const ok = await Dialog.confirm({ title: "Clear chat history?", content: "All messages will be deleted. This can't be undone.", confirmText: "Clear", cancelText: "Cancel" });
+    if (!ok) return;
+    if (convId) clearMutation.mutate();
+    else {
+      setLocalMsgs([]);
+      Toast.show({ icon: "success", content: "Chat cleared" });
+    }
+  };
   if (convQuery.isLoading) return <LoadingState />;
   return (
     <div className="chat-page">
       <div className="chat-header">
         <div className="chat-avatar"><div className="chat-avatar-inner">🤖</div></div>
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 className="chat-title">AI Assistant</h1>
           <p className="chat-subtitle">Active now</p>
         </div>
+        <button type="button" className="chat-clear-btn" onClick={handleClearHistory} disabled={!allMsgs.length || clearMutation.isPending}>Clear</button>
       </div>
       <div className="chat-messages">
         {allMsgs.length === 0 && (

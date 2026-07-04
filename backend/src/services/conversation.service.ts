@@ -38,6 +38,14 @@ export async function getMessagesByConversationId(id: string): Promise<IMessage[
   if (!Types.ObjectId.isValid(id)) return [];
   return Message.find({ conversationId: id }).sort({ createdAt: 1 });
 }
+export async function clearConversationMessages(id: string): Promise<number | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+  const conversation = await Conversation.findById(id);
+  if (!conversation) return null;
+  const result = await Message.deleteMany({ conversationId: id });
+  await conversation.save();
+  return result.deletedCount;
+}
 export async function getRecentContextMessages(conversationId: Types.ObjectId): Promise<{ role: "user" | "assistant" | "system"; content: string }[]> {
   const messages = await Message.find({ conversationId })
     .sort({ createdAt: -1 })
