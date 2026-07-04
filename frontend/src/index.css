@@ -85,6 +85,13 @@ body {
 .app-main--tabbar {
   padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 8px);
 }
+.page-transition {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
 .ig-nav-float {
   position: fixed;
   bottom: 0;
@@ -733,6 +740,11 @@ body {
   font-weight: 600 !important;
   font-size: 14px !important;
 }
+.adm-form .adm-form-item-label .adm-form-item-required-asterisk {
+  position: static;
+  left: auto;
+  margin-left: 4px;
+}
 .adm-form .adm-input {
   background: var(--ig-bg) !important;
   border: 1px solid var(--ig-border) !important;
@@ -806,9 +818,25 @@ body {
   font-weight: 600;
   border-radius: 999px;
 }
-.adm-empty-description {
-  color: var(--ig-text-secondary) !important;
-  font-size: 14px !important;
+.ig-empty-wrap {
+  padding: 32px 0;
+  text-align: center;
+}
+.ig-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+.ig-empty-icon {
+  width: 64px;
+  height: auto;
+}
+.ig-empty-text {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--ig-text-secondary);
 }
 .adm-error-block-description-title {
   font-weight: 600 !important;

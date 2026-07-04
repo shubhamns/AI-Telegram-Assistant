@@ -80,7 +80,7 @@ export default function AIPage() {
           </div>
         )}
         {allMsgs.map((m, i) => (
-          <div key={i} className={`chat-bubble chat-bubble--${m.role}`}>{m.content}</div>
+          <div key={`${m.role}-${i}-${m.content.slice(0, 24)}`} className={`chat-bubble chat-bubble--${m.role}`}>{m.content}</div>
         ))}
         {chatMutation.isPending && (
           <div className="chat-bubble chat-bubble--assistant"><DotLoading color="primary" /></div>

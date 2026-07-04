@@ -1,5 +1,8 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { SafeArea } from "antd-mobile";
+import { Outlet } from "react-router-dom";
+import { scaleTap } from "@/utils/motion";
 import {
   AppOutline,
   MessageOutline,
@@ -32,7 +35,9 @@ export default function MobileLayout() {
         </header>
       )}
       <div className={`app-main${hideChrome ? "" : " app-main--tabbar"}`}>
-        <Outlet />
+        <div className="page-transition">
+          <Outlet />
+        </div>
       </div>
       {!hideChrome && (
         <nav className="ig-nav-float" aria-label="Main navigation">
@@ -42,20 +47,23 @@ export default function MobileLayout() {
               const active = activeKey === item.key;
               const Icon = item.icon;
               return (
-                <button
+                <motion.button
                   key={item.key}
                   type="button"
                   className={`ig-nav-item${active ? " ig-nav-item--active" : ""}${item.center ? " ig-nav-item--center" : ""}`}
                   onClick={() => navigate(item.key)}
                   aria-label={item.label}
                   aria-current={active ? "page" : undefined}
+                  {...scaleTap}
+                  animate={active ? { scale: 1.05 } : { scale: 1 }}
+                  transition={{ duration: 0.15 }}
                 >
                   {item.center ? (
                     <span className="ig-nav-add"><AddOutline fontSize={26} /></span>
                   ) : (
                     <Icon fontSize={24} />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>

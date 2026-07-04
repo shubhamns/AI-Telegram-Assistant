@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PullToRefresh, Toast } from "antd-mobile";
+import { motion } from "framer-motion";
 import { AddOutline, MessageOutline, StarOutline } from "antd-mobile-icons";
 import { fetchReminders, completeReminder } from "@/api/reminderApi";
 import { fetchTelegramStatus } from "@/api/telegramApi";
@@ -60,7 +61,7 @@ export default function TodayPage() {
             {total > 0 && (
               <div className="today-progress">
                 <div className="today-progress-bar">
-                  <div className="today-progress-fill" style={{ width: `${progress}%` }} />
+                  <motion.div className="today-progress-fill" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.35, ease: "easeOut" }} />
                 </div>
                 <p className="today-progress-label">{todayDone.length} of {total} done today · {todayPending.length} left</p>
               </div>
