@@ -1,22 +1,23 @@
 # AI-Telegram-Assistant
 
-A personal AI assistant that connects Telegram, OpenAI, MongoDB, and a React dashboard for chat, natural-language reminders, and automation logging.
+A multi-user AI assistant SaaS that connects Telegram, OpenAI, MongoDB, and a mobile-first React dashboard for chat, natural-language reminders, brain dumps, and workspace billing.
 
 <img width="373" height="622" alt="image" src="https://github.com/user-attachments/assets/dc223f20-ae88-4a8f-b268-8ab1ebeebc2d" />
 <img width="355" height="624" alt="image" src="https://github.com/user-attachments/assets/2de0f4ec-357e-4ede-be55-e55cfa0649cb" />
 <img width="341" height="617" alt="image" src="https://github.com/user-attachments/assets/e7841a21-63a9-4170-9441-53f74a2f2f2c" />
 <img width="304" height="596" alt="image" src="https://github.com/user-attachments/assets/66dcb07d-9b76-4099-a4dc-b6ae23632e78" />
 
-
 ## Features
 
-- Telegram bot connection (polling locally, webhook in production)
-- Receive and send Telegram messages
-- AI replies via OpenAI
-- Conversation history stored in MongoDB
-- Natural-language reminder creation
-- Scheduled Telegram reminders (node-cron)
-- React dashboard with stats, conversations, reminders, and Telegram send
+- **Auth & workspaces** — register, email verification, login, JWT + refresh tokens, forgot/reset password
+- **Telegram linking** — each workspace links its own Telegram chat via deep link (`/start link_<code>`)
+- **AI chat** — OpenAI replies from dashboard or Telegram, scoped per workspace
+- **Reminders** — natural-language creation, scheduled Telegram delivery (node-cron)
+- **Brain dump** — AI task extraction from free-form text
+- **Usage limits** — free vs pro plan caps on AI messages, reminders, and brain dumps
+- **Stripe billing** — optional checkout and customer portal (works without Stripe keys in dev)
+- **Mobile UI** — Instagram-style layout with Today, Messages, Reminders, and Settings
+- Telegram bot (polling locally, webhook in production)
 - Docker + Docker Compose
 - GitHub Actions CI/CD
 
@@ -24,8 +25,8 @@ A personal AI assistant that connects Telegram, OpenAI, MongoDB, and a React das
 
 | Layer | Technologies |
 |-------|-------------|
-| Frontend | React, Vite, TypeScript, Tailwind, TanStack Query, React Router |
-| Backend | Node.js, Express, TypeScript, Mongoose, Zod, OpenAI SDK |
+| Frontend | React, Vite, TypeScript, Ant Design Mobile, TanStack Query, React Router |
+| Backend | Node.js, Express, TypeScript, Mongoose, Zod, JWT, bcrypt, nodemailer, OpenAI SDK, Stripe |
 | Database | MongoDB (local / Atlas) |
 | DevOps | Docker, Docker Compose, GitHub Actions, Vercel, Render |
 
@@ -34,18 +35,33 @@ A personal AI assistant that connects Telegram, OpenAI, MongoDB, and a React das
 ```
 Telegram User → Webhook/Polling → Express API → OpenAI
                                       ↓
-                                   MongoDB
+                              MongoDB (users, workspaces,
+                              conversations, reminders)
                                       ↑
-React Dashboard (Vercel) → Express API (Render)
+React App (Vercel) → JWT auth → Express API (Render)
+```
+
+### Backend structure (MVC)
+
+```
+backend/src/
+├── app.ts              # middleware + route registration
+├── routes/             # route modules
+├── controllers/        # request handlers
+├── services/           # business logic
+├── models/             # Mongoose schemas
+├── middleware/         # auth, usage limits, errors
+├── webhooks/           # Telegram + Stripe webhooks
+└── jobs/               # reminder cron
 ```
 
 ## Folder Structure
 
 ```
 ai-telegram-assistant/
-├── frontend/          # React dashboard
-├── backend/           # Express API + Telegram + OpenAI
-├── .github/workflows/ # CI and CD pipelines
+├── frontend/          # React app
+├── backend/           # Express API
+├── .github/workflows/ # CI and CD
 ├── docker-compose.yml
 └── README.md
 ```
@@ -57,7 +73,21 @@ ai-telegram-assistant/
 - MongoDB (local or Atlas)
 - Telegram bot token ([BotFather](https://t.me/BotFather))
 - OpenAI API key
+- Gmail app password (or SMTP credentials) for verification/reset emails
 - Docker (optional)
+- Stripe account (optional, for billing)
+
+---
+
+## Auth Flow
+
+1. **Sign up** → verification email sent → `/check-email`
+2. **Verify email** → click link in email → `/verify-email?token=...`
+3. **Sign in** → access token (1 day) + refresh token (7 days) stored in browser
+4. **Session refresh** — expired access tokens are renewed automatically via `POST /auth/refresh`
+5. **Sign out** — revokes refresh token server-side (Settings → Sign out)
+
+Unverified users cannot sign in or access protected routes.
 
 ---
 
@@ -65,25 +95,23 @@ ai-telegram-assistant/
 
 1. Open Telegram and search **BotFather**
 2. Send `/newbot`
-3. Choose a display name (e.g. `My AI Assistant`)
-4. Choose a username ending in `bot` (e.g. `my_ai_assistant_bot`)
-5. Copy the bot token
-6. Paste it in `backend/.env` as `TELEGRAM_BOT_TOKEN`
+3. Choose a display name and a username ending in `bot`
+4. Copy the bot token into `backend/.env` as `TELEGRAM_BOT_TOKEN`
 
-Verify (replace `<TOKEN>` with your token — never commit it):
+Verify (replace `<TOKEN>` — never commit it):
 
 ```
 GET https://api.telegram.org/bot<TOKEN>/getMe
 ```
 
-## 2. Get Telegram Chat ID
+## 2. Link Telegram to Your Workspace
 
-1. Open your bot in Telegram
-2. Press **Start** or send `/start`
-3. The bot saves your chat ID automatically
-4. Or set `TELEGRAM_CHAT_ID` manually in `backend/.env`
+1. Sign in to the dashboard
+2. Go to **Settings** → **Connect Telegram**
+3. Open the deep link in Telegram and tap **Start**
+4. The bot links your chat to your workspace
 
-With local polling (`TELEGRAM_MODE=polling`), start the backend and send `/start` — your chat ID is captured from the update.
+With local polling (`TELEGRAM_MODE=polling`), the backend must be running when you tap Start.
 
 ---
 
@@ -102,7 +130,22 @@ Never expose this key in the frontend or commit it to git.
 
 ---
 
-## 4. MongoDB Setup
+## 4. Email (Verification & Password Reset)
+
+Use Gmail with an app password or any SMTP provider:
+
+```env
+EMAIL=your@gmail.com
+PASS=your-gmail-app-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+```
+
+Verification and reset links use `CLIENT_URL` as the frontend base.
+
+---
+
+## 5. MongoDB Setup
 
 ### Local
 
@@ -110,7 +153,7 @@ Never expose this key in the frontend or commit it to git.
 # macOS with Homebrew
 brew services start mongodb-community
 
-# Or use Docker Compose (includes mongo service)
+# Or Docker Compose
 docker compose up mongo -d
 ```
 
@@ -124,7 +167,7 @@ Default URI: `mongodb://localhost:27017/ai-telegram-assistant`
 
 ---
 
-## 5. Run Without Docker
+## 6. Run Without Docker
 
 ### Backend
 
@@ -136,14 +179,14 @@ npm install
 npm run dev
 ```
 
-API: `http://localhost:<PORT>/api/v1` (port from your `backend/.env`)
+API: `http://localhost:<PORT>/api/v1` (default port in `.env.example` is `8001`)
 
 ### Frontend
 
 ```bash
 cd frontend
 cp .env.example .env
-# Edit .env if your backend port or URL differs
+# Set VITE_API_URL to match your backend port, e.g. http://localhost:8001/api/v1
 npm install
 npm run dev
 ```
@@ -152,18 +195,12 @@ Dashboard: `http://localhost:5173`
 
 ---
 
-## 6. Run With Docker Compose
-
-1. Copy env templates and fill in real values locally:
+## 7. Run With Docker Compose
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-```
-
-2. Edit `backend/.env` and `frontend/.env` with your keys (never commit `.env` files).
-
-```bash
+# Edit both .env files with your keys
 docker compose up --build
 ```
 
@@ -173,23 +210,21 @@ docker compose up --build
 | Backend | http://localhost:5000/api/v1 |
 | MongoDB | localhost:27017 |
 
-**Important:** The browser calls `http://localhost:5000/api/v1`, not Docker internal hostnames.
+Set `VITE_API_URL` to the browser-reachable backend URL (not Docker internal hostnames).
 
 ---
 
-## 7. Telegram Modes
+## 8. Telegram Modes
 
-### MODE A: Polling (Local Development)
+### Polling (Local Development)
 
 ```env
 TELEGRAM_MODE=polling
 ```
 
-- Uses Telegram `getUpdates`
-- No public HTTPS URL required
-- Do not run polling and webhook simultaneously
+Uses Telegram `getUpdates`. No public HTTPS URL required. Do not run polling and webhook at the same time.
 
-### MODE B: Webhook (Production)
+### Webhook (Production)
 
 ```env
 TELEGRAM_MODE=webhook
@@ -201,67 +236,112 @@ Webhook URL: `{BACKEND_PUBLIC_URL}/api/v1/webhooks/telegram`
 Register webhook:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/telegram/set-webhook
+curl -X POST https://your-backend/api/v1/telegram/set-webhook \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 Or set manually via Telegram API with `secret_token` matching `TELEGRAM_WEBHOOK_SECRET`.
 
 ---
 
-## 8. Environment Variables
+## 9. Environment Variables
 
-Copy the `.env.example` files to `.env` and replace dummy values with your own.
+Copy `.env.example` → `.env` and replace placeholders. **Never commit `.env` files.**
 
-**Never commit `.env` files** — they are gitignored. `.env.example` only contains placeholders safe for a public repo.
-
-### Frontend (`frontend/.env.example` → `frontend/.env`)
+### Frontend (`frontend/.env`)
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Backend API base URL |
+| `VITE_API_URL` | Backend API base URL (e.g. `http://localhost:8001/api/v1`) |
 
-### Backend (`backend/.env.example` → `backend/.env`)
+### Backend (`backend/.env`)
 
 | Variable | Description |
 |----------|-------------|
 | `NODE_ENV` | development / production / test |
 | `PORT` | Server port |
 | `MONGODB_URI` | MongoDB connection string |
-| `CLIENT_URL` | Frontend URL for CORS |
+| `CLIENT_URL` | Frontend URL for CORS and email links |
+| `JWT_SECRET` | Secret for signing access tokens (min 16 chars) |
+| `JWT_EXPIRES_IN` | Access token lifetime (default `1d`) |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime (default `7d`) |
+| `EMAIL` | SMTP sender email |
+| `PASS` | SMTP password / app password |
+| `SMTP_HOST` | SMTP host |
+| `SMTP_PORT` | SMTP port |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `OPENAI_MODEL` | Model name |
-| `MAX_AI_CONTEXT_MESSAGES` | Context window limit |
+| `MAX_AI_CONTEXT_MESSAGES` | AI context window limit |
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
-| `TELEGRAM_CHAT_ID` | Optional default chat ID |
+| `TELEGRAM_CHAT_ID` | Optional legacy default chat ID |
 | `TELEGRAM_WEBHOOK_SECRET` | Random string for webhook validation |
 | `BACKEND_PUBLIC_URL` | Public backend URL (webhook mode) |
-| `APP_TIMEZONE` | IANA timezone (e.g. Asia/Kolkata) |
-| `TELEGRAM_MODE` | polling or webhook |
-| `CRON_ENABLED` | true or false |
+| `APP_TIMEZONE` | IANA timezone (e.g. `Asia/Kolkata`) |
+| `TELEGRAM_MODE` | `polling` or `webhook` |
+| `CRON_ENABLED` | `true` or `false` |
+| `STRIPE_SECRET_KEY` | Stripe secret key (optional) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret (optional) |
+| `STRIPE_PRO_PRICE_ID` | Stripe price ID for Pro plan (optional) |
 
 ---
 
-## 9. API Endpoints
+## 10. API Endpoints
 
 Base: `/api/v1`
+
+### Public
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| GET | `/dashboard/stats` | Dashboard statistics |
-| GET | `/telegram/status` | Bot connection status |
+| POST | `/auth/register` | Create account |
+| POST | `/auth/login` | Sign in |
+| POST | `/auth/refresh` | Rotate access + refresh tokens |
+| POST | `/auth/logout` | Revoke refresh token |
+| POST | `/auth/forgot-password` | Send reset email |
+| POST | `/auth/reset-password` | Reset password |
+| GET | `/auth/verify-email/:token` | Verify email |
+| POST | `/auth/resend-verification` | Resend verification email |
+| POST | `/webhooks/telegram` | Telegram webhook receiver |
+| POST | `/webhooks/stripe` | Stripe webhook receiver |
+
+### Protected (Bearer access token)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/auth/me` | Current user + workspace |
+| GET | `/dashboard/stats` | Workspace statistics |
+| GET | `/telegram/status` | Telegram link status |
+| GET | `/telegram/link` | Telegram deep link |
 | POST | `/telegram/send` | Send message from dashboard |
 | POST | `/telegram/set-webhook` | Register webhook |
 | GET | `/telegram/webhook-info` | Webhook info |
-| POST | `/webhooks/telegram` | Telegram webhook receiver |
 | GET | `/conversations` | List conversations |
 | GET | `/conversations/:id/messages` | Get messages |
+| DELETE | `/conversations/:id/messages` | Clear chat history |
 | GET/POST/PUT/DELETE | `/reminders` | Reminder CRUD |
 | PATCH | `/reminders/:id/cancel` | Cancel reminder |
+| POST | `/ai/chat` | Dashboard AI chat |
+| POST | `/ai/plan` | Brain dump task extraction |
+| GET | `/billing/plans` | Available plans |
+| GET | `/billing/usage` | Current usage vs limits |
+| POST | `/billing/checkout` | Stripe checkout session |
+| POST | `/billing/portal` | Stripe customer portal |
 
 ---
 
-## 10. Testing
+## 11. Plans & Usage
+
+| Plan | AI messages | Reminders | Brain dumps |
+|------|-------------|-----------|-------------|
+| Free | 50 / period | 20 | 10 |
+| Pro | 500 / period | 500 | 100 |
+
+Usage is tracked per workspace. Stripe checkout upgrades a workspace to Pro when configured.
+
+---
+
+## 12. Testing
 
 ```bash
 # Backend
@@ -271,11 +351,11 @@ cd backend && npm test -- --run
 cd frontend && npm test -- --run
 ```
 
-Tests mock OpenAI and Telegram — no real API calls.
+Tests use in-memory MongoDB and mock external services — no real API calls.
 
 ---
 
-## 11. CI Pipeline
+## 13. CI Pipeline
 
 File: `.github/workflows/ci.yml`
 
@@ -287,7 +367,7 @@ Triggers on push/PR to `main`:
 
 ---
 
-## 12. CD Pipeline
+## 14. CD Pipeline
 
 File: `.github/workflows/deploy.yml`
 
@@ -308,21 +388,20 @@ Runs after successful CI on `main`:
 
 ---
 
-## 13. Vercel Deployment
+## 15. Vercel Deployment
 
 1. Import the `frontend` folder as a Vercel project
-2. Set build command: `npm run build`
-3. Set output directory: `dist`
-4. Add env: `VITE_API_URL=https://YOUR_RENDER_BACKEND/api/v1`
+2. Build command: `npm run build`
+3. Output directory: `dist`
+4. Env: `VITE_API_URL=https://YOUR_RENDER_BACKEND/api/v1`
 
 ---
 
-## 14. Render Deployment
+## 16. Render Deployment
 
 1. Create Web Service from `backend/Dockerfile`
-2. Set environment variables (see Production section below)
-3. Create Deploy Hook in Render dashboard
-4. Add hook URL to GitHub secret `RENDER_DEPLOY_HOOK_URL`
+2. Set environment variables (see below)
+3. Create Deploy Hook → add URL to GitHub secret `RENDER_DEPLOY_HOOK_URL`
 
 ### Production Backend Env
 
@@ -331,55 +410,68 @@ NODE_ENV=production
 PORT=5000
 MONGODB_URI=YOUR_MONGODB_ATLAS_URI
 CLIENT_URL=YOUR_VERCEL_FRONTEND_URL
+JWT_SECRET=YOUR_LONG_RANDOM_SECRET
+JWT_EXPIRES_IN=1d
+JWT_REFRESH_EXPIRES_IN=7d
+EMAIL=YOUR_SMTP_EMAIL
+PASS=YOUR_SMTP_PASSWORD
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 OPENAI_API_KEY=YOUR_SECRET
 OPENAI_MODEL=gpt-4o-mini
 TELEGRAM_BOT_TOKEN=YOUR_SECRET
-TELEGRAM_CHAT_ID=YOUR_CHAT_ID
 TELEGRAM_WEBHOOK_SECRET=YOUR_RANDOM_SECRET
 BACKEND_PUBLIC_URL=YOUR_RENDER_BACKEND_URL
 APP_TIMEZONE=Asia/Kolkata
 TELEGRAM_MODE=webhook
 CRON_ENABLED=true
+STRIPE_SECRET_KEY=YOUR_STRIPE_SECRET
+STRIPE_WEBHOOK_SECRET=YOUR_STRIPE_WEBHOOK_SECRET
+STRIPE_PRO_PRICE_ID=YOUR_STRIPE_PRICE_ID
 ```
 
 ---
 
-## 15. Free Hosting Limitations
+## 17. Free Hosting Limitations
 
 **Render free tier services may sleep.** When the backend is asleep:
 
-- node-cron reminders are **not guaranteed** to run at exact times
+- node-cron reminders are **not guaranteed** to run on time
 - Webhook requests may be delayed until the service wakes
-
-This MVP uses node-cron to demonstrate scheduling locally. Do not expect guaranteed reminder delivery on free Render.
 
 ### Future Improvements
 
-- External cron trigger (e.g. cron-job.org hitting a `/cron/reminders` endpoint)
+- External cron trigger hitting a `/cron/reminders` endpoint
 - Durable job queue (BullMQ + Redis)
 - Managed scheduler (AWS EventBridge, etc.)
 
 ---
 
-## 16. Security Notes
+## 18. Security Notes
 
-- Helmet, CORS allowlist, rate limiting on send endpoint
+- JWT access tokens (short-lived) + hashed refresh tokens (rotated on refresh)
+- Helmet, CORS allowlist, rate limiting on auth and send endpoints
 - Webhook secret validation via `X-Telegram-Bot-Api-Secret-Token`
-- Zod validation on all inputs
+- All API data scoped by workspace
+- Zod validation on inputs
 - No secrets in frontend or git
-- Bot token and OpenAI key never exposed via API
+- Email verification required before sign-in
 
 ---
 
-## 17. Troubleshooting
+## 19. Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| Bot not responding locally | Set `TELEGRAM_MODE=polling`, check token, send `/start` |
+| Bot not responding locally | Set `TELEGRAM_MODE=polling`, check token, link Telegram in Settings |
 | Webhook 401 | Match `TELEGRAM_WEBHOOK_SECRET` with Telegram `secret_token` |
 | CORS errors | Set `CLIENT_URL` to exact frontend origin |
+| Login blocked | Verify email first; check inbox or resend from `/check-email` |
+| Session expired | Sign in again; refresh token lasts 7 days by default |
 | Reminders not firing | Check `CRON_ENABLED=true`, MongoDB connection |
-| Dashboard empty | Ensure backend is running and `VITE_API_URL` is correct |
+| Dashboard API errors | Ensure backend is running and `VITE_API_URL` matches backend port |
+| Duplicate key on conversations | Restart backend (runs index sync) or drop stale `telegramChatId_1` index |
+| Verification email not sent | Check SMTP credentials in `backend/.env` |
 
 ---
 
