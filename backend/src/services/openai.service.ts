@@ -8,9 +8,6 @@ function getClient(): OpenAI {
   if (!client) client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   return client;
 }
-export function setOpenAIClient(c: OpenAI | null): void {
-  client = c;
-}
 export async function generateChatReply(messages: { role: "user" | "assistant" | "system"; content: string }[]): Promise<string> {
   const response = await getClient().chat.completions.create({
     model: env.OPENAI_MODEL,

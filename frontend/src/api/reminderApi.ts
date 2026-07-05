@@ -28,10 +28,6 @@ export async function updateReminder(id: string, payload: {
 export async function deleteReminder(id: string): Promise<void> {
   await api.delete(`/reminders/${id}`);
 }
-export async function cancelReminder(id: string): Promise<Reminder> {
-  const { data } = await api.patch<ApiResponse<Reminder>>(`/reminders/${id}/cancel`);
-  return data.data;
-}
 export async function completeReminder(id: string): Promise<Reminder> {
   const { data } = await api.patch<ApiResponse<Reminder>>(`/reminders/${id}/complete`);
   return data.data;

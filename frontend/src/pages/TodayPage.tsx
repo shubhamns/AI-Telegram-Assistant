@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PullToRefresh, Toast } from "antd-mobile";
+import { useQuery } from "@tanstack/react-query";
+import { PullToRefresh } from "antd-mobile";
 import { motion } from "framer-motion";
 import { AddOutline, MessageOutline, StarOutline } from "antd-mobile-icons";
-import { fetchReminders, completeReminder } from "@/api/reminderApi";
+import { fetchReminders } from "@/api/reminderApi";
 import { fetchTelegramStatus } from "@/api/telegramApi";
 import type { Reminder } from "@/types/reminder";
 import EditReminderSheet from "@/components/reminders/EditReminderSheet";
@@ -14,35 +14,22 @@ import LoadingState from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import IgButton from "@/components/common/IgButton";
+import { useCompleteReminder } from "@/hooks/useCompleteReminder";
 import { getGreeting, isSameDay, isOverdue } from "@/utils/format";
-function sortByTime(list: Reminder[]) {
-  return [...list].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-}
-function getTodayTasks(pending: Reminder[], done: Reminder[], now: Date) {
-  const stillDue = pending.filter((r) => isSameDay(r.scheduledAt, now) && !isOverdue(r.scheduledAt, now));
-  const finished = done.filter((r) => isSameDay(r.scheduledAt, now));
-  return sortByTime([...stillDue, ...finished]);
-}
+import { EMPTY_REMINDERS } from "@/utils/empty";
+import { sortByTime, getTodayTasks } from "@/utils/reminders";
 export default function TodayPage() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const [editing, setEditing] = useState<Reminder | null>(null);
   const now = new Date();
   const statusQ = useQuery({ queryKey: ["telegram-status"], queryFn: fetchTelegramStatus });
   const pendingQ = useQuery({ queryKey: ["reminders", "pending"], queryFn: () => fetchReminders("pending") });
   const sentQ = useQuery({ queryKey: ["reminders", "sent"], queryFn: () => fetchReminders("sent") });
-  const complete = useMutation({
-    mutationFn: completeReminder,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reminders"] });
-      Toast.show({ icon: "success", content: "Done!" });
-    },
-    onError: (err: Error) => Toast.show({ icon: "fail", content: err.message }),
-  });
+  const complete = useCompleteReminder();
   if (pendingQ.isLoading || sentQ.isLoading || statusQ.isLoading) return <LoadingState />;
   if (pendingQ.error || sentQ.error) return <ErrorState message={((pendingQ.error || sentQ.error) as Error).message} />;
-  const pending = pendingQ.data ?? [];
-  const sent = sentQ.data ?? [];
+  const pending = pendingQ.data ?? EMPTY_REMINDERS;
+  const sent = sentQ.data ?? EMPTY_REMINDERS;
   const overdue = sortByTime(pending.filter((r) => isOverdue(r.scheduledAt, now)));
   const todayItems = getTodayTasks(pending, sent, now);
   const todayPending = pending.filter((r) => isSameDay(r.scheduledAt, now));

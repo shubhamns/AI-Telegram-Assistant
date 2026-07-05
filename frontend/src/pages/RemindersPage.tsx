@@ -1,57 +1,43 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tabs, PullToRefresh, Toast, Dialog } from "antd-mobile";
-import { fetchReminders, completeReminder, clearCompletedReminders } from "@/api/reminderApi";
+import { useQuery } from "@tanstack/react-query";
+import { Tabs, PullToRefresh, Dialog } from "antd-mobile";
+import { fetchReminders } from "@/api/reminderApi";
 import type { ReminderStatus, Reminder } from "@/types/reminder";
-import TaskCard from "@/components/reminders/TaskCard";
+import GroupedTaskList from "@/components/reminders/GroupedTaskList";
 import EditReminderSheet from "@/components/reminders/EditReminderSheet";
 import FixedPageLayout from "@/components/common/FixedPageLayout";
 import LoadingState from "@/components/common/LoadingState";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import IgButton from "@/components/common/IgButton";
-import { formatDayLabel } from "@/utils/format";
+import { useCompleteReminder } from "@/hooks/useCompleteReminder";
+import { useClearCompletedReminders } from "@/hooks/useClearCompletedReminders";
+import { EMPTY_REMINDERS } from "@/utils/empty";
+import { groupRemindersByDay } from "@/utils/reminders";
 export default function RemindersPage() {
   const [tab, setTab] = useState("upcoming");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<Reminder | null>(null);
-  const qc = useQueryClient();
+  const resetSelection = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+  };
   const statusFilter: ReminderStatus | undefined = tab === "upcoming" ? "pending" : tab === "completed" ? "sent" : undefined;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["reminders", tab],
     queryFn: () => fetchReminders(statusFilter),
   });
-  const complete = useMutation({
-    mutationFn: completeReminder,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reminders"] });
-      Toast.show({ icon: "success", content: "Done!" });
-    },
-  });
-  const clearDone = useMutation({
-    mutationFn: (ids?: string[]) => clearCompletedReminders(ids),
-    onSuccess: (deleted) => {
-      qc.invalidateQueries({ queryKey: ["reminders"] });
-      setSelectMode(false);
-      setSelectedIds([]);
-      Toast.show({ icon: "success", content: `Cleared ${deleted}` });
-    },
-    onError: (err: Error) => Toast.show({ icon: "fail", content: err.message }),
-  });
-  const completedItems = useMemo(() => (data || []).filter((r) => r.status === "sent"), [data]);
+  const complete = useCompleteReminder();
+  const clearDone = useClearCompletedReminders(resetSelection);
+  const reminders = data ?? EMPTY_REMINDERS;
+  const completedItems = useMemo(() => reminders.filter((r) => r.status === "sent"), [reminders]);
   const showClearActions = tab === "completed" || (tab === "all" && completedItems.length > 0);
-  const clearTargets = tab === "completed" ? (data || []) : completedItems;
-  const grouped = (data || []).reduce<Record<string, Reminder[]>>((acc, r) => {
-    const key = formatDayLabel(r.scheduledAt);
-    if (!acc[key]) acc[key] = [];
-    acc[key]!.push(r);
-    return acc;
-  }, {});
+  const clearTargets = tab === "completed" ? reminders : completedItems;
+  const grouped = useMemo(() => groupRemindersByDay(reminders), [reminders]);
   const handleTabChange = (key: string) => {
     setTab(key);
-    setSelectMode(false);
-    setSelectedIds([]);
+    resetSelection();
   };
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -89,7 +75,7 @@ export default function RemindersPage() {
                 ) : (
                   <>
                     <IgButton variant="outline" className="ig-btn--sm" onClick={selectAll}>Select All</IgButton>
-                    <IgButton variant="outline" className="ig-btn--sm" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>Cancel</IgButton>
+                    <IgButton variant="outline" className="ig-btn--sm" onClick={resetSelection}>Cancel</IgButton>
                   </>
                 )}
               </div>
@@ -101,36 +87,21 @@ export default function RemindersPage() {
           {Object.keys(grouped).length === 0 ? (
             <EmptyState message="No reminders" />
           ) : (
-            Object.entries(grouped).map(([day, items]) => (
-              <div key={day} style={{ marginBottom: 16 }}>
-                <div className="section-label-text" style={{ marginBottom: 8, paddingLeft: 2 }}>{day}</div>
-                <div style={{ background: "var(--ig-surface)", borderRadius: 12, border: "1px solid var(--ig-border)", overflow: "hidden" }}>
-                  {(items || []).map((r) => {
-                    const isCompleted = r.status === "sent";
-                    const canSelect = selectMode && isCompleted && (tab === "completed" || tab === "all");
-                    return (
-                      <div key={r._id} style={{ padding: "0 14px" }}>
-                        <TaskCard
-                          reminder={r}
-                          done={isCompleted}
-                          onToggle={r.status === "pending" ? () => complete.mutate(r._id) : undefined}
-                          onEdit={r.status === "pending" && !selectMode ? () => setEditing(r) : undefined}
-                          selectMode={canSelect}
-                          selected={selectedIds.includes(r._id)}
-                          onSelect={() => toggleSelect(r._id)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+            <GroupedTaskList
+              groups={grouped}
+              tab={tab}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onComplete={(id) => complete.mutate(id)}
+              onEdit={setEditing}
+              onToggleSelect={toggleSelect}
+            />
           )}
         </PullToRefresh>
       </FixedPageLayout>
       {selectMode && selectedIds.length > 0 && (
         <div className="clear-bar-fixed">
-          <IgButton variant="outline" block onClick={() => { setSelectMode(false); setSelectedIds([]); }} style={{ color: "#fff", borderColor: "rgba(255,255,255,0.35)", background: "transparent" }}>Cancel</IgButton>
+          <IgButton variant="outline" block onClick={resetSelection} style={{ color: "#fff", borderColor: "rgba(255,255,255,0.35)", background: "transparent" }}>Cancel</IgButton>
           <IgButton variant="danger" block loading={clearDone.isPending} onClick={handleClearSelected} style={{ background: "#ED4956", color: "#fff", borderColor: "#ED4956" }}>Clear ({selectedIds.length})</IgButton>
         </div>
       )}

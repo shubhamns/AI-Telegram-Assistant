@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const statusQuery = useQuery({ queryKey: ["telegram-status"], queryFn: fetchTelegramStatus });
   const statsQuery = useQuery({ queryKey: ["dashboard-stats"], queryFn: fetchDashboardStats });
   if (statusQuery.isLoading || statsQuery.isLoading) return <LoadingState />;
-  if (statusQuery.error) return <ErrorState message={statusQuery.error.message} />;
+  if (statusQuery.error || statsQuery.error) return <ErrorState message={(statusQuery.error || statsQuery.error)!.message} />;
   const status = statusQuery.data;
   const stats = statsQuery.data;
   const statItems = [

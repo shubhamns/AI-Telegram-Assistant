@@ -39,9 +39,6 @@ export async function getUpdates(offset?: number): Promise<{ update_id: number; 
   const result = await telegramFetch("getUpdates", body);
   return result as { update_id: number; message?: { message_id: number; chat: { id: number }; text?: string; from?: { id: number; username?: string; first_name?: string; last_name?: string } } }[];
 }
-export function getDefaultChatId(): string | undefined {
-  return env.TELEGRAM_CHAT_ID || undefined;
-}
 export async function resolveChatId(): Promise<string | undefined> {
   if (env.TELEGRAM_CHAT_ID) return env.TELEGRAM_CHAT_ID;
   const latest = await Conversation.findOne().sort({ updatedAt: -1 });

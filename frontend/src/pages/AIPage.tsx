@@ -4,6 +4,7 @@ import { Input, DotLoading, Dialog, Toast } from "antd-mobile";
 import { fetchConversations, fetchMessages, clearChatHistory } from "@/api/conversationApi";
 import { sendAiChat } from "@/api/aiApi";
 import LoadingState from "@/components/common/LoadingState";
+import { EMPTY_MESSAGES } from "@/utils/empty";
 interface ChatMsg {
   role: "user" | "assistant";
   content: string;
@@ -40,7 +41,7 @@ export default function AIPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMsgs, msgQuery.data]);
-  const history: ChatMsg[] = (msgQuery.data || [])
+  const history: ChatMsg[] = (msgQuery.data ?? EMPTY_MESSAGES)
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   const allMsgs = [...history, ...localMsgs.filter((lm) => !history.some((h) => h.content === lm.content && h.role === lm.role))];

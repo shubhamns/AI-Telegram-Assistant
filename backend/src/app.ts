@@ -13,8 +13,6 @@ import webhookRoutes from "./routes/webhook.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import * as conversationService from "./services/conversation.service.js";
 import * as reminderService from "./services/reminder.service.js";
-import * as automationService from "./services/automation.service.js";
-import { Reminder } from "./models/reminder.model.js";
 export function createApp() {
   const app = express();
   app.use(helmet());
@@ -25,12 +23,9 @@ export function createApp() {
     res.json({ success: true, message: "API is healthy" });
   });
   app.get("/api/v1/dashboard/stats", asyncHandler(async (_req, res) => {
-    const [convStats, reminderStats, failedAutomations, recentLogs, upcomingReminders] = await Promise.all([
+    const [convStats, reminderStats] = await Promise.all([
       conversationService.getDashboardStats(),
       reminderService.getDashboardReminderStats(),
-      automationService.getFailedCount(),
-      automationService.getRecentLogs(5),
-      Reminder.find({ status: "pending" }).sort({ scheduledAt: 1 }).limit(5),
     ]);
     res.json({
       success: true,
@@ -39,10 +34,6 @@ export function createApp() {
         totalMessages: convStats.totalMessages,
         pendingReminders: reminderStats.pending,
         sentReminders: reminderStats.sent,
-        failedAutomations,
-        recentConversations: convStats.recentConversations,
-        upcomingReminders,
-        recentLogs,
       },
     });
   }));

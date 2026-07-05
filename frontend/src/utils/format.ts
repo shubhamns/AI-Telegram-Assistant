@@ -1,6 +1,3 @@
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
@@ -24,7 +21,4 @@ export function getGreeting(): string {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
-}
-export function cn(...classes: (string | false | undefined)[]): string {
-  return classes.filter(Boolean).join(" ");
 }

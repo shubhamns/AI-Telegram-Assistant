@@ -16,7 +16,7 @@ const envSchema = z.object({
   CRON_ENABLED: z.enum(["true", "false"]).default("true"),
 });
 export type Env = z.infer<typeof envSchema>;
-export function loadEnv(): Env {
+function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
     console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);

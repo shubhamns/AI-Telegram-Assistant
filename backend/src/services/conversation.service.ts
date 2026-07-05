@@ -43,7 +43,6 @@ export async function clearConversationMessages(id: string): Promise<number | nu
   const conversation = await Conversation.findById(id);
   if (!conversation) return null;
   const result = await Message.deleteMany({ conversationId: id });
-  await conversation.save();
   return result.deletedCount;
 }
 export async function getRecentContextMessages(conversationId: Types.ObjectId): Promise<{ role: "user" | "assistant" | "system"; content: string }[]> {
@@ -58,12 +57,10 @@ export async function getLatestConversation(): Promise<IConversation | null> {
 export async function getDashboardStats(): Promise<{
   totalConversations: number;
   totalMessages: number;
-  recentConversations: IConversation[];
 }> {
-  const [totalConversations, totalMessages, recentConversations] = await Promise.all([
+  const [totalConversations, totalMessages] = await Promise.all([
     Conversation.countDocuments(),
     Message.countDocuments(),
-    Conversation.find().sort({ updatedAt: -1 }).limit(5),
   ]);
-  return { totalConversations, totalMessages, recentConversations };
+  return { totalConversations, totalMessages };
 }

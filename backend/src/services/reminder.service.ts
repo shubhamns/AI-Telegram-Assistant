@@ -5,13 +5,13 @@ import { formatInTimeZone } from "date-fns-tz";
 import * as telegramService from "./telegram.service.js";
 import * as automationService from "./automation.service.js";
 import { logger } from "../utils/logger.js";
-export function reminderBody(title: string, notes?: string): string {
+function reminderBody(title: string, notes?: string): string {
   const titleText = title.trim();
   const noteText = notes?.trim();
   if (!noteText || noteText === titleText) return titleText;
   return `${titleText}\n\n${noteText}`;
 }
-export function reminderMessageText(title: string, notes?: string, index?: number, total?: number): string {
+function reminderMessageText(title: string, notes?: string, index?: number, total?: number): string {
   const base = `Reminder: ${reminderBody(title, notes)}`;
   if (total && total > 1 && index) return `${base} (${index}/${total})`;
   return base;
@@ -39,10 +39,6 @@ export async function createReminder(data: {
 export async function listReminders(status?: string): Promise<IReminder[]> {
   const filter = status ? { status } : {};
   return Reminder.find(filter).sort({ scheduledAt: 1 });
-}
-export async function getReminderById(id: string): Promise<IReminder | null> {
-  if (!Types.ObjectId.isValid(id)) return null;
-  return Reminder.findById(id);
 }
 export async function updateReminder(id: string, data: {
   title?: string;
@@ -156,11 +152,10 @@ async function processOneDueReminder(): Promise<boolean> {
   }
   return true;
 }
-export async function getDashboardReminderStats(): Promise<{ pending: number; sent: number; failed: number }> {
-  const [pending, sent, failed] = await Promise.all([
+export async function getDashboardReminderStats(): Promise<{ pending: number; sent: number }> {
+  const [pending, sent] = await Promise.all([
     Reminder.countDocuments({ status: "pending" }),
     Reminder.countDocuments({ status: "sent" }),
-    Reminder.countDocuments({ status: "failed" }),
   ]);
-  return { pending, sent, failed };
+  return { pending, sent };
 }
