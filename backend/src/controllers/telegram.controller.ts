@@ -2,32 +2,40 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import * as telegramService from "../services/telegram.service.js";
 import * as conversationService from "../services/conversation.service.js";
+import * as workspaceService from "../services/workspace.service.js";
 import * as automationService from "../services/automation.service.js";
 import { AppError } from "../middleware/error.middleware.js";
 import { sendMessageSchema, setWebhookSchema } from "../schemas/telegram.schema.js";
 import { env } from "../config/env.js";
-export const getStatus = asyncHandler(async (_req: Request, res: Response) => {
+export const getStatus = asyncHandler(async (req: Request, res: Response) => {
   const bot = await telegramService.getMe();
-  const chatId = await telegramService.resolveChatId();
-  const conversation = await conversationService.getLatestConversation();
+  const workspace = req.workspace!;
+  const conversation = await conversationService.getWorkspaceConversation(workspace._id.toString());
+  const chatId = await workspaceService.resolveWorkspaceChatId(workspace);
   res.json({
     success: true,
     data: {
-      connected: true,
+      connected: !!chatId,
       botUsername: bot.username,
       botName: bot.first_name,
-      userDisplayName: conversation?.firstName || null,
+      userDisplayName: conversation?.firstName || workspace.telegramFirstName || req.user!.name,
       chatId: chatId ? `${chatId.slice(0, 3)}***${chatId.slice(-2)}` : null,
+      telegramLinked: !!workspace.telegramChatId,
       mode: env.TELEGRAM_MODE,
     },
   });
 });
+export const getLink = asyncHandler(async (req: Request, res: Response) => {
+  const data = await workspaceService.regenerateLinkCode(req.workspace!._id.toString());
+  res.json({ success: true, data });
+});
 export const sendMessage = asyncHandler(async (req: Request, res: Response) => {
   const body = sendMessageSchema.parse(req.body);
-  const chatId = await telegramService.resolveChatId();
-  if (!chatId) throw new AppError("No Telegram chat ID configured. Send /start to the bot first.", 400);
+  const workspace = req.workspace!;
+  const chatId = await workspaceService.resolveWorkspaceChatId(workspace);
+  if (!chatId) throw new AppError("Link Telegram first in Settings.", 400);
   await telegramService.sendMessage(chatId, body.message);
-  const conversation = await conversationService.findOrCreateConversation({ telegramChatId: chatId });
+  const conversation = await conversationService.findOrCreateConversation({ workspaceId: workspace._id, telegramChatId: chatId });
   await conversationService.saveMessage({
     conversationId: conversation._id,
     role: "assistant",

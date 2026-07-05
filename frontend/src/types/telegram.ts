@@ -4,5 +4,6 @@ export interface TelegramStatus {
   botName?: string;
   userDisplayName?: string | null;
   chatId?: string | null;
+  telegramLinked?: boolean;
   mode: string;
 }

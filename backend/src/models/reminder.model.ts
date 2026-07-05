@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 export type ReminderStatus = "pending" | "processing" | "sent" | "failed" | "cancelled";
 export interface IReminder extends Document {
+  workspaceId: Types.ObjectId;
   telegramChatId: string;
   title: string;
   originalText?: string;
@@ -17,6 +18,7 @@ export interface IReminder extends Document {
 }
 const reminderSchema = new Schema<IReminder>(
   {
+    workspaceId: { type: Schema.Types.ObjectId, ref: "Workspace", required: true, index: true },
     telegramChatId: { type: String, required: true, index: true },
     title: { type: String, required: true },
     originalText: { type: String },

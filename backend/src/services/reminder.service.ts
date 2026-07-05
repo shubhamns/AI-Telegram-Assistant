@@ -17,14 +17,17 @@ function reminderMessageText(title: string, notes?: string, index?: number, tota
   return base;
 }
 export async function createReminder(data: {
+  workspaceId: Types.ObjectId;
   title: string;
   scheduledAt: Date;
   telegramChatId: string;
   originalText?: string;
   notifyMinutesBefore?: number;
   notifyMessageCount?: number;
+  timezone?: string;
 }): Promise<IReminder> {
   return Reminder.create({
+    workspaceId: data.workspaceId,
     title: data.title,
     scheduledAt: data.scheduledAt,
     telegramChatId: data.telegramChatId,
@@ -32,15 +35,16 @@ export async function createReminder(data: {
     notifyMinutesBefore: data.notifyMinutesBefore ?? 0,
     notifyMessageCount: data.notifyMessageCount ?? 1,
     notifySent: false,
-    timezone: env.APP_TIMEZONE,
+    timezone: data.timezone || env.APP_TIMEZONE,
     status: "pending",
   });
 }
-export async function listReminders(status?: string): Promise<IReminder[]> {
-  const filter = status ? { status } : {};
+export async function listReminders(workspaceId: string, status?: string): Promise<IReminder[]> {
+  const filter: { workspaceId: string; status?: string } = { workspaceId };
+  if (status) filter.status = status;
   return Reminder.find(filter).sort({ scheduledAt: 1 });
 }
-export async function updateReminder(id: string, data: {
+export async function updateReminder(workspaceId: string, id: string, data: {
   title?: string;
   scheduledAt?: Date;
   originalText?: string;
@@ -48,7 +52,7 @@ export async function updateReminder(id: string, data: {
   notifyMessageCount?: number;
 }): Promise<IReminder | null> {
   if (!Types.ObjectId.isValid(id)) return null;
-  const reminder = await Reminder.findOne({ _id: id, status: "pending" });
+  const reminder = await Reminder.findOne({ _id: id, workspaceId, status: "pending" });
   if (!reminder) return null;
   if (data.title) reminder.title = data.title;
   if (data.originalText !== undefined) reminder.originalText = data.originalText;
@@ -64,25 +68,25 @@ export async function updateReminder(id: string, data: {
   await reminder.save();
   return reminder;
 }
-export async function deleteReminder(id: string): Promise<boolean> {
+export async function deleteReminder(workspaceId: string, id: string): Promise<boolean> {
   if (!Types.ObjectId.isValid(id)) return false;
-  const result = await Reminder.deleteOne({ _id: id, status: "pending" });
+  const result = await Reminder.deleteOne({ _id: id, workspaceId, status: "pending" });
   return result.deletedCount > 0;
 }
-export async function cancelReminder(id: string): Promise<IReminder | null> {
+export async function cancelReminder(workspaceId: string, id: string): Promise<IReminder | null> {
   if (!Types.ObjectId.isValid(id)) return null;
-  return Reminder.findOneAndUpdate({ _id: id, status: "pending" }, { status: "cancelled" }, { new: true });
+  return Reminder.findOneAndUpdate({ _id: id, workspaceId, status: "pending" }, { status: "cancelled" }, { new: true });
 }
-export async function completeReminder(id: string): Promise<IReminder | null> {
+export async function completeReminder(workspaceId: string, id: string): Promise<IReminder | null> {
   if (!Types.ObjectId.isValid(id)) return null;
   return Reminder.findOneAndUpdate(
-    { _id: id, status: "pending" },
+    { _id: id, workspaceId, status: "pending" },
     { status: "sent", sentAt: new Date() },
     { new: true }
   );
 }
-export async function clearCompletedReminders(ids?: string[]): Promise<number> {
-  const filter: { status: string; _id?: { $in: Types.ObjectId[] } } = { status: "sent" };
+export async function clearCompletedReminders(workspaceId: string, ids?: string[]): Promise<number> {
+  const filter: { workspaceId: string; status: string; _id?: { $in: Types.ObjectId[] } } = { workspaceId, status: "sent" };
   if (ids?.length) {
     const validIds = ids.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
     if (validIds.length === 0) return 0;
@@ -91,8 +95,8 @@ export async function clearCompletedReminders(ids?: string[]): Promise<number> {
   const result = await Reminder.deleteMany(filter);
   return result.deletedCount;
 }
-export function formatReminderConfirmation(title: string, scheduledAt: Date): string {
-  const formatted = formatInTimeZone(scheduledAt, env.APP_TIMEZONE, "h:mm a 'on' MMM d, yyyy");
+export function formatReminderConfirmation(title: string, scheduledAt: Date, timezone: string): string {
+  const formatted = formatInTimeZone(scheduledAt, timezone, "h:mm a 'on' MMM d, yyyy");
   return `Reminder created: ${title} at ${formatted}.`;
 }
 export async function processDueReminders(): Promise<void> {
@@ -152,10 +156,10 @@ async function processOneDueReminder(): Promise<boolean> {
   }
   return true;
 }
-export async function getDashboardReminderStats(): Promise<{ pending: number; sent: number }> {
+export async function getDashboardReminderStats(workspaceId: string): Promise<{ pending: number; sent: number }> {
   const [pending, sent] = await Promise.all([
-    Reminder.countDocuments({ status: "pending" }),
-    Reminder.countDocuments({ status: "sent" }),
+    Reminder.countDocuments({ workspaceId, status: "pending" }),
+    Reminder.countDocuments({ workspaceId, status: "sent" }),
   ]);
   return { pending, sent };
 }

@@ -1,0 +1,10 @@
+import { Router } from "express";
+import * as billingController from "../controllers/billing.controller.js";
+import { authMiddleware, requireVerifiedEmail } from "../middleware/auth.middleware.js";
+const router = Router();
+router.use(authMiddleware, requireVerifiedEmail);
+router.get("/plans", billingController.getPlans);
+router.get("/usage", billingController.getUsage);
+router.post("/checkout", billingController.checkout);
+router.post("/portal", billingController.portal);
+export default router;

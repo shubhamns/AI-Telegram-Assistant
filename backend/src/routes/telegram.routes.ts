@@ -1,9 +1,12 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import * as telegramController from "../controllers/telegram.controller.js";
+import { authMiddleware, requireVerifiedEmail } from "../middleware/auth.middleware.js";
 const router = Router();
 const sendLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { success: false, message: "Too many requests" } });
+router.use(authMiddleware, requireVerifiedEmail);
 router.get("/status", telegramController.getStatus);
+router.get("/link", telegramController.getLink);
 router.post("/send", sendLimiter, telegramController.sendMessage);
 router.post("/set-webhook", telegramController.setWebhook);
 router.get("/webhook-info", telegramController.webhookInfo);

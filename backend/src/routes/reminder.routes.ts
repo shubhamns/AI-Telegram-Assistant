@@ -1,8 +1,11 @@
 import { Router } from "express";
 import * as reminderController from "../controllers/reminder.controller.js";
+import { authMiddleware, requireVerifiedEmail } from "../middleware/auth.middleware.js";
+import { requireUsage } from "../middleware/usage.middleware.js";
 const router = Router();
+router.use(authMiddleware, requireVerifiedEmail);
 router.get("/", reminderController.listReminders);
-router.post("/", reminderController.createReminder);
+router.post("/", requireUsage("reminders"), reminderController.createReminder);
 router.post("/clear-completed", reminderController.clearCompleted);
 router.put("/:id", reminderController.updateReminder);
 router.delete("/:id", reminderController.deleteReminder);

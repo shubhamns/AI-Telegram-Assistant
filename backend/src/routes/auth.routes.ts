@@ -1,0 +1,16 @@
+import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import * as authController from "../controllers/auth.controller.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
+const router = Router();
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { success: false, message: "Too many attempts" } });
+router.post("/register", authLimiter, authController.register);
+router.post("/login", authLimiter, authController.login);
+router.post("/refresh", authLimiter, authController.refresh);
+router.post("/logout", authController.logout);
+router.post("/forgot-password", authLimiter, authController.forgotPassword);
+router.post("/reset-password", authLimiter, authController.resetPassword);
+router.get("/verify-email/:token", authController.verifyEmail);
+router.post("/resend-verification", authLimiter, authController.resendVerification);
+router.get("/me", authMiddleware, authController.me);
+export default router;

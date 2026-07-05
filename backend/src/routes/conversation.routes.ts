@@ -1,6 +1,8 @@
 import { Router } from "express";
 import * as conversationController from "../controllers/conversation.controller.js";
+import { authMiddleware, requireVerifiedEmail } from "../middleware/auth.middleware.js";
 const router = Router();
+router.use(authMiddleware, requireVerifiedEmail);
 router.get("/", conversationController.listConversations);
 router.get("/:id", conversationController.getConversation);
 router.get("/:id/messages", conversationController.getMessages);
