@@ -15,7 +15,6 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().min(1),
   MAX_AI_CONTEXT_MESSAGES: z.coerce.number().default(10),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
-  TELEGRAM_CHAT_ID: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().min(1),
   BACKEND_PUBLIC_URL: z.string().optional(),
   APP_TIMEZONE: z.string().min(1),

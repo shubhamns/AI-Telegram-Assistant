@@ -2,7 +2,6 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { Workspace, type IWorkspace } from "../models/workspace.model.js";
 import { PLAN_LIMITS } from "../config/plans.js";
-import { env } from "../config/env.js";
 import * as telegramService from "./telegram.service.js";
 export async function getWorkspaceById(id: string): Promise<IWorkspace | null> {
   if (!Types.ObjectId.isValid(id)) return null;
@@ -81,7 +80,5 @@ export function serializeWorkspace(workspace: IWorkspace) {
   };
 }
 export async function resolveWorkspaceChatId(workspace: IWorkspace): Promise<string | undefined> {
-  if (workspace.telegramChatId) return workspace.telegramChatId;
-  if (env.TELEGRAM_CHAT_ID) return env.TELEGRAM_CHAT_ID;
-  return undefined;
+  return workspace.telegramChatId || undefined;
 }

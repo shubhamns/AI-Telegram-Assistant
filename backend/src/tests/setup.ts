@@ -13,7 +13,6 @@ process.env.OPENAI_API_KEY = "test-key";
 process.env.OPENAI_MODEL = "gpt-4o-mini";
 process.env.MAX_AI_CONTEXT_MESSAGES = "10";
 process.env.TELEGRAM_BOT_TOKEN = "test-token";
-process.env.TELEGRAM_CHAT_ID = "123456";
 process.env.TELEGRAM_WEBHOOK_SECRET = "test-webhook-secret";
 process.env.APP_TIMEZONE = "UTC";
 process.env.TELEGRAM_MODE = "webhook";

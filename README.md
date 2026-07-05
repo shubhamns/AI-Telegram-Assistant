@@ -273,7 +273,6 @@ Copy `.env.example` → `.env` and replace placeholders. **Never commit `.env` f
 | `OPENAI_MODEL` | Model name |
 | `MAX_AI_CONTEXT_MESSAGES` | AI context window limit |
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather |
-| `TELEGRAM_CHAT_ID` | Optional legacy default chat ID |
 | `TELEGRAM_WEBHOOK_SECRET` | Random string for webhook validation |
 | `BACKEND_PUBLIC_URL` | Public backend URL (webhook mode) |
 | `APP_TIMEZONE` | IANA timezone (e.g. `Asia/Kolkata`) |

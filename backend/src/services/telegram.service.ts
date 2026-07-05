@@ -1,6 +1,5 @@
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
-import { Conversation } from "../models/conversation.model.js";
 const BASE_URL = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}`;
 async function telegramFetch(method: string, body?: Record<string, unknown>): Promise<unknown> {
   const res = await fetch(`${BASE_URL}/${method}`, {
@@ -38,9 +37,4 @@ export async function getUpdates(offset?: number): Promise<{ update_id: number; 
   if (offset !== undefined) body.offset = offset;
   const result = await telegramFetch("getUpdates", body);
   return result as { update_id: number; message?: { message_id: number; chat: { id: number }; text?: string; from?: { id: number; username?: string; first_name?: string; last_name?: string } } }[];
-}
-export async function resolveChatId(): Promise<string | undefined> {
-  if (env.TELEGRAM_CHAT_ID) return env.TELEGRAM_CHAT_ID;
-  const latest = await Conversation.findOne().sort({ updatedAt: -1 });
-  return latest?.telegramChatId;
 }
